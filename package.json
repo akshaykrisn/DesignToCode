@@ -1,0 +1,36 @@
+{
+  "name": "skills-onboard",
+  "displayName": "Skills Onboard",
+  "description": "Guided onboarding to extract and configure AI agent skills and agent files into your repository.",
+  "publisher": "akshay",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "skillsOnboard.start",
+        "title": "Skills Onboard: Start Onboarding"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "@types/vscode": "^1.96.0",
+    "typescript": "^5.3.0"
+  }
+}

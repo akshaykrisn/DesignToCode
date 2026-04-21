@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+
+# VS Code Extension compilation output
+out/
+
+# Packaged extension files
+*.vsix
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# VS Code testing
+.vscode-test/
