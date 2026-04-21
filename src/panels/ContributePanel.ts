@@ -158,7 +158,7 @@ export class ContributePanel {
   p { color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
   
   /* GitHub-style Diff View */
-  .diff-container { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13px; min-height: 200px; max-height: 500px; overflow-y: auto; margin-bottom: 24px; display: flex; flex-direction: column; }
+  .diff-container { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13px; min-height: 200px; margin-bottom: 24px; display: flex; flex-direction: column; }
   .diff-line { display: flex; min-height: 22px; line-height: 22px; width: 100%; }
   .diff-line:hover .diff-content { background-color: rgba(255,255,255,0.03); }
   .diff-linenum { width: 40px; min-width: 40px; flex-shrink: 0; padding-right: 10px; text-align: right; color: rgba(232, 236, 244, 0.3); font-size: 11px; user-select: none; background: rgba(255,255,255,0.02); }

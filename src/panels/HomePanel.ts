@@ -65,6 +65,8 @@ export class HomePanel implements vscode.WebviewViewProvider {
     font-family: var(--font-ui);
     font-size: 13px;
     padding: 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .header {

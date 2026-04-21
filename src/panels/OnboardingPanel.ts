@@ -428,11 +428,11 @@ Respond in JSON only. No markdown. Schema:
   /* ── Main stage ──────────────────────────────────────────────── */
   .stage {
     flex: 1; padding: 32px 40px 36px;
-    display: grid; place-items: center;
-    overflow: hidden;
+    display: flex; justify-content: center;
+    overflow-y: auto; overflow-x: hidden;
   }
   .step-page {
-    width: 100%; max-width: 660px;
+    width: 100%; max-width: 660px; margin: auto 0;
     display: none; flex-direction: column; gap: 24px;
     animation: stepIn 0.5s var(--transition) both;
   }
