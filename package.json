@@ -3,7 +3,11 @@
   "displayName": "Skills Onboard",
   "description": "Guided onboarding to extract and configure AI agent skills and agent files into your repository.",
   "publisher": "akshay",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akshay/skills-onboard.git"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -16,10 +20,32 @@
   ],
   "main": "./out/extension/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "skillsOnboardContainer",
+          "title": "Skills Onboard",
+          "icon": "$(zap)"
+        }
+      ]
+    },
+    "views": {
+      "skillsOnboardContainer": [
+        {
+          "type": "webview",
+          "id": "skillsOnboard.homeView",
+          "name": "Home"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "skillsOnboard.start",
         "title": "Skills Onboard: Start Onboarding"
+      },
+      {
+        "command": "skillsOnboard.contribute",
+        "title": "Skills Onboard: Contribute Skill Updates"
       }
     ]
   },

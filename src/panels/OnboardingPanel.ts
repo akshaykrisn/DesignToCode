@@ -49,7 +49,7 @@ export class OnboardingPanel {
         retainContextWhenHidden: true,
         localResourceRoots: [
           vscode.Uri.joinPath(context.extensionUri, 'media'),
-          vscode.Uri.joinPath(context.extensionUri, 'skills'),
+          vscode.Uri.joinPath(context.extensionUri, '.github'),
         ],
       }
     );
@@ -74,6 +74,12 @@ export class OnboardingPanel {
         break;
       case 'close':
         this._panel.dispose();
+        break;
+      case 'saveConfluenceConfig':
+        const config = msg.payload as { url: string; email: string; token: string };
+        await this._context.globalState.update('skillsOnboard.confluenceUrl', config.url);
+        await this._context.globalState.update('skillsOnboard.confluenceEmail', config.email);
+        await this._context.secrets.store('skillsOnboard.confluenceToken', config.token);
         break;
     }
   }
@@ -123,10 +129,12 @@ ${JSON.stringify(repoMeta, null, 2)}
 
 Existing relevant directories: ${repoMeta.existingDirs.join(', ') || 'none'}
 
+Important: If multiple valid directories exist (like .github and .claude), always prefer .github.
+
 Respond in JSON only. No markdown. Schema:
 {
-  "path": "relative path like .github/skills or .claude/skills",
-  "agentPath": "relative path for agent files like .claude/agents",
+  "path": "relative path for the configuration root like .github or .claude",
+  "agentPath": "relative path for agent files like .claude/agents or .github/agents",
   "reason": "one sentence rationale",
   "confidence": "high | medium | low"
 }
@@ -174,8 +182,11 @@ Respond in JSON only. No markdown. Schema:
       return;
     }
 
+    // Save target path for the Contribute panel to use later
+    await this._context.globalState.update('skillsOnboard.targetPath', targetRelPath);
+
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const skillsSrc = path.join(this._context.extensionPath, 'skills');
+    const skillsSrc = path.join(this._context.extensionPath, '.github');
     const skillsDest = path.join(workspaceRoot, targetRelPath);
 
     const copied: string[] = [];
@@ -199,7 +210,7 @@ Respond in JSON only. No markdown. Schema:
       return;
     }
 
-    const skillsSrc = path.join(this._context.extensionPath, 'skills');
+    const skillsSrc = path.join(this._context.extensionPath, '.github');
     const checks = listSkillFiles(skillsSrc).map((rel) => {
       const full = path.join(workspaceRoot, targetRelPath, rel);
       return { path: path.join(targetRelPath, rel), exists: fs.existsSync(full) } as FileStatus;
@@ -231,13 +242,13 @@ Respond in JSON only. No markdown. Schema:
   }
 
   private _heuristicPlacement(meta: RepoMeta): { path: string; agentPath: string; reason: string; confidence: string } {
-    if (meta.existingDirs.includes('.claude/skills')) {
-      return { path: '.claude/skills', agentPath: '.claude/agents', reason: 'Existing .claude directory detected', confidence: 'high' };
-    }
     if (meta.existingDirs.includes('.github')) {
-      return { path: '.github/skills', agentPath: '.github/agents', reason: 'Existing .github directory — standard Copilot location', confidence: 'high' };
+      return { path: '.github', agentPath: '.github/agents', reason: 'Existing .github directory — standard Copilot location', confidence: 'high' };
     }
-    return { path: '.github/skills', agentPath: '.github/agents', reason: 'Default cross-agent compatible location', confidence: 'medium' };
+    if (meta.existingDirs.includes('.claude/skills')) {
+      return { path: '.claude', agentPath: '.claude/agents', reason: 'Existing .claude directory detected', confidence: 'high' };
+    }
+    return { path: '.github', agentPath: '.github/agents', reason: 'Default cross-agent compatible location', confidence: 'medium' };
   }
 
   // ─── Dispose ───────────────────────────────────────────────────────────────
@@ -268,7 +279,7 @@ Respond in JSON only. No markdown. Schema:
 <title>Skills Onboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,500;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
   /* ── Reset & base ───────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -278,19 +289,19 @@ Respond in JSON only. No markdown. Schema:
     --surface:     #0d1120;
     --surface2:    #131828;
     --border:      rgba(255,255,255,0.07);
-    --border-glow: rgba(82,130,255,0.35);
-    --accent:      #5282ff;
-    --accent2:     #00d4aa;
-    --accent-dim:  rgba(82,130,255,0.15);
+    --border-glow: rgba(59,145,64,0.35);
+    --accent:      #3b9140;
+    --accent2:     #21792E;
+    --accent-dim:  rgba(59,145,64,0.15);
     --text:        #e8ecf4;
     --text-muted:  #6b7a99;
     --text-dim:    #3a4360;
-    --success:     #00d4aa;
+    --success:     #16a34a;
     --warn:        #f5a623;
     --error:       #ff5f6d;
     --radius:      14px;
     --radius-sm:   8px;
-    --font-ui:     'Bricolage Grotesque', sans-serif;
+    --font-ui:     'Helvetica Neue', Helvetica, Arial, sans-serif;
     --font-mono:   'JetBrains Mono', monospace;
     --transition:  0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -317,8 +328,8 @@ Respond in JSON only. No markdown. Schema:
   .bg-grid {
     position: fixed; inset: 0; z-index: 0;
     background-image:
-      linear-gradient(rgba(82,130,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(82,130,255,0.03) 1px, transparent 1px);
+      linear-gradient(rgba(59,145,64,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,145,64,0.05) 1px, transparent 1px);
     background-size: 40px 40px;
     mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
     animation: gridDrift 20s ease-in-out infinite alternate;
@@ -330,8 +341,8 @@ Respond in JSON only. No markdown. Schema:
 
   /* Glow orbs */
   .orb { position: fixed; border-radius: 50%; filter: blur(80px); z-index: 0; pointer-events: none; }
-  .orb-1 { width: 500px; height: 500px; top: -100px; left: -100px; background: radial-gradient(circle, rgba(82,130,255,0.12), transparent 70%); animation: orbFloat 12s ease-in-out infinite alternate; }
-  .orb-2 { width: 400px; height: 400px; bottom: -80px; right: -80px; background: radial-gradient(circle, rgba(0,212,170,0.10), transparent 70%); animation: orbFloat 15s ease-in-out infinite alternate-reverse; }
+  .orb-1 { width: 500px; height: 500px; top: -100px; left: -100px; background: radial-gradient(circle, rgba(59,145,64,0.12), transparent 70%); animation: orbFloat 12s ease-in-out infinite alternate; }
+  .orb-2 { width: 400px; height: 400px; bottom: -80px; right: -80px; background: radial-gradient(circle, rgba(22,163,74,0.10), transparent 70%); animation: orbFloat 15s ease-in-out infinite alternate-reverse; }
   @keyframes orbFloat { from { transform: translate(0, 0) scale(1); } to { transform: translate(30px, -20px) scale(1.1); } }
 
   .content { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
@@ -348,7 +359,7 @@ Respond in JSON only. No markdown. Schema:
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px;
-    box-shadow: 0 0 20px rgba(82,130,255,0.4);
+    box-shadow: 0 0 20px rgba(59,145,64,0.4);
   }
   .header-title { font-size: 15px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.01em; }
 
@@ -378,13 +389,13 @@ Respond in JSON only. No markdown. Schema:
     border-color: var(--accent);
     color: var(--accent);
     background: var(--accent-dim);
-    box-shadow: 0 0 0 6px rgba(82,130,255,0.12), 0 0 20px rgba(82,130,255,0.3);
+    box-shadow: 0 0 0 6px rgba(59,145,64,0.12), 0 0 20px rgba(59,145,64,0.3);
   }
   .step-circle.done {
     border-color: var(--accent2);
-    background: rgba(0,212,170,0.15);
+    background: rgba(33,121,46,0.15);
     color: var(--accent2);
-    box-shadow: 0 0 16px rgba(0,212,170,0.25);
+    box-shadow: 0 0 16px rgba(33,121,46,0.25);
   }
   .step-label {
     font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
@@ -445,7 +456,7 @@ Respond in JSON only. No markdown. Schema:
   }
   .card.glow {
     border-color: var(--border-glow);
-    box-shadow: 0 0 0 1px rgba(82,130,255,0.1) inset, 0 8px 32px rgba(82,130,255,0.06);
+    box-shadow: 0 0 0 1px rgba(59,145,64,0.1) inset, 0 8px 32px rgba(59,145,64,0.06);
   }
 
   /* ── Typography ──────────────────────────────────────────────── */
@@ -481,11 +492,11 @@ Respond in JSON only. No markdown. Schema:
     letter-spacing: 0.01em;
   }
   .btn-primary {
-    background: linear-gradient(135deg, var(--accent), #7b6aff);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
     color: #fff;
-    box-shadow: 0 4px 20px rgba(82,130,255,0.4);
+    box-shadow: 0 4px 20px rgba(59,145,64,0.4);
   }
-  .btn-primary:hover  { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(82,130,255,0.55); }
+  .btn-primary:hover  { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(59,145,64,0.55); }
   .btn-primary:active { transform: translateY(0); }
   .btn-ghost {
     background: transparent; color: var(--text-muted);
@@ -493,11 +504,11 @@ Respond in JSON only. No markdown. Schema:
   }
   .btn-ghost:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
   .btn-success {
-    background: linear-gradient(135deg, var(--accent2), #00b89a);
+    background: linear-gradient(135deg, var(--success), #15803d);
     color: #fff;
-    box-shadow: 0 4px 20px rgba(0,212,170,0.35);
+    box-shadow: 0 4px 20px rgba(22,163,74,0.35);
   }
-  .btn-success:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,212,170,0.5); }
+  .btn-success:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(22,163,74,0.5); }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
   .btn-row { display: flex; gap: 12px; align-items: center; }
 
@@ -525,8 +536,8 @@ Respond in JSON only. No markdown. Schema:
   /* ── Pulsing spinner ─────────────────────────────────────────── */
   .spinner {
     width: 18px; height: 18px; border-radius: 50%;
-    border: 2px solid var(--accent-dim);
-    border-top-color: var(--accent);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
     animation: spin 0.8s linear infinite;
     flex-shrink: 0;
   }
@@ -576,8 +587,8 @@ Respond in JSON only. No markdown. Schema:
   .reason-badge {
     display: flex; align-items: flex-start; gap: 10px;
     padding: 12px 16px; border-radius: var(--radius-sm);
-    background: rgba(82,130,255,0.07);
-    border: 1px solid rgba(82,130,255,0.18);
+    background: rgba(59,145,64,0.07);
+    border: 1px solid rgba(59,145,64,0.18);
     font-size: 13px; color: var(--text-muted);
   }
   .reason-badge .rb-label { color: var(--accent); font-weight: 600; flex-shrink: 0; }
@@ -638,7 +649,6 @@ Respond in JSON only. No markdown. Schema:
         <div class="chips">
           <div class="chip"><span class="dot"></span>Copilot-compatible</div>
           <div class="chip"><span class="dot"></span>Claude Code-compatible</div>
-          <div class="chip"><span class="dot"></span>Cursor-compatible</div>
           <div class="chip"><span class="dot"></span>Zero config needed</div>
         </div>
 
@@ -649,7 +659,7 @@ Respond in JSON only. No markdown. Schema:
             <p style="font-size:13px">
               We'll run a quick <strong style="color:var(--text)">Copilot-powered analysis</strong> of your repo to
               determine the ideal placement strategy, then copy the bundled skills
-              and agents with a single click. Finally, we verify everything is
+              , agents, and instructions with a single click. Finally, we verify everything is
               in the right place.
             </p>
           </div>
@@ -657,7 +667,7 @@ Respond in JSON only. No markdown. Schema:
 
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-begin">
-            Let's begin <span style="font-size:16px">→</span>
+            Let's begin
           </button>
           <button class="btn btn-ghost" id="btn-close-1">Maybe later</button>
         </div>
@@ -686,7 +696,7 @@ Respond in JSON only. No markdown. Schema:
         <div class="card glow" id="analysisResult" style="display:none">
           <div style="display:flex;gap:16px;flex-wrap:wrap">
             <div style="flex:1;min-width:180px">
-              <div class="eyebrow" style="margin-bottom:6px">Skills path</div>
+              <div class="eyebrow" style="margin-bottom:6px">Config path</div>
               <div class="mono" id="resultSkillPath" style="font-size:14px;color:var(--text)"></div>
             </div>
             <div style="flex:1;min-width:180px">
@@ -706,7 +716,7 @@ Respond in JSON only. No markdown. Schema:
             Run analysis
           </button>
           <button class="btn btn-primary" id="toExtractBtn" style="display:none">
-            Continue to extraction →
+            Continue to extraction
           </button>
           <button class="btn btn-ghost" id="btn-back-0">← Back</button>
         </div>
@@ -718,15 +728,15 @@ Respond in JSON only. No markdown. Schema:
           <div class="eyebrow">Step 2 — Extraction</div>
           <h2 style="margin-top:10px">Place files in your repo</h2>
           <p style="margin-top:8px">
-            The bundled skills will be copied into your workspace. Confirm or
+            The bundled configuration will be copied into your workspace. Confirm or
             adjust the target path below.
           </p>
         </div>
 
         <div class="card">
-          <div style="margin-bottom:14px;font-weight:600;font-size:14px">Target skills directory</div>
+          <div style="margin-bottom:14px;font-weight:600;font-size:14px">Target config directory</div>
           <div class="path-selector">
-            <input class="path-input" type="text" id="targetPathInput" value=".github/skills" spellcheck="false"/>
+            <input class="path-input" type="text" id="targetPathInput" value=".github" spellcheck="false"/>
             <button class="btn btn-ghost" id="btn-reset-path" style="padding:10px 18px;border-radius:8px;flex-shrink:0">Reset</button>
           </div>
           <p style="margin-top:10px;font-size:12px;color:var(--text-dim)" id="extractDesc">
@@ -744,15 +754,51 @@ Respond in JSON only. No markdown. Schema:
             <div class="spinner" id="extractSpinner" style="display:none"></div>
             Extract files
           </button>
-          <button class="btn btn-success" id="toVerifyBtn" style="display:none">
-            Verify placement →
+          <button class="btn btn-primary" id="toConfBtn" style="display:none">
+            Continue to telemetry
           </button>
           <button class="btn btn-ghost" id="btn-back-1">← Back</button>
         </div>
       </div>
 
-      <!-- ─── Step 3: Verification ────────────────────────────── -->
+      <!-- ─── Step 3: Confluence (Telemetry) ──────────────────── -->
       <div class="step-page" id="page-3">
+        <div>
+          <div class="eyebrow">Step 3 — Feedback Loop</div>
+          <h2 style="margin-top:10px">Link Confluence (Optional)</h2>
+          <p style="margin-top:8px">
+            Provide your Atlassian account email and an API Token to easily sync your skill improvements
+            back to the team's central knowledge base later.
+          </p>
+        </div>
+
+        <div class="card">
+          <div style="margin-bottom:14px;font-weight:600;font-size:14px">Confluence API Setup</div>
+          <div class="file-list" style="gap: 14px; background: transparent; border: none; padding: 0;">
+            <div>
+              <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">Confluence Domain (e.g. https://your-domain.atlassian.net)</div>
+              <input class="path-input" type="text" id="confUrlInput" style="width:100%" spellcheck="false" placeholder="https://your-domain.atlassian.net"/>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">Atlassian Account Email</div>
+              <input class="path-input" type="text" id="confEmailInput" style="width:100%" spellcheck="false" placeholder="you@company.com"/>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">Atlassian API Token</div>
+              <input class="path-input" type="password" id="confTokenInput" style="width:100%" spellcheck="false" placeholder="Enter API token..."/>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="saveConfBtn">Save & Continue</button>
+          <button class="btn btn-ghost" id="skipConfBtn">Skip</button>
+          <button class="btn btn-ghost" id="btn-back-2">← Back</button>
+        </div>
+      </div>
+
+      <!-- ─── Step 4: Verification ────────────────────────────── -->
+      <div class="step-page" id="page-4">
         <div>
           <div class="eyebrow">Step 3 — Verification</div>
           <h2 style="margin-top:10px">Confirming placement</h2>
@@ -775,7 +821,7 @@ Respond in JSON only. No markdown. Schema:
           <button class="btn btn-success" id="doneBtn" style="display:none">
             ✓ All done!
           </button>
-          <button class="btn btn-ghost" id="btn-back-2">← Back</button>
+          <button class="btn btn-ghost" id="btn-back-3">← Back</button>
         </div>
       </div>
 
@@ -794,6 +840,7 @@ Respond in JSON only. No markdown. Schema:
     { label: 'Intro' },
     { label: 'Analysis' },
     { label: 'Extraction' },
+    { label: 'Feedback' },
     { label: 'Verification' },
   ];
 
@@ -872,20 +919,20 @@ Respond in JSON only. No markdown. Schema:
 
   // ── Step 2: Extraction ─────────────────────────────────────────
   function resetPath() {
-    const def = analysisResult ? analysisResult.path : '.github/skills';
+    const def = analysisResult ? analysisResult.path : '.github';
     document.getElementById('targetPathInput').value = def;
   }
 
   function extractFiles() {
     const btn = document.getElementById('extractBtn');
     const spinner = document.getElementById('extractSpinner');
-    const toVerify = document.getElementById('toVerifyBtn');
+    const toConf = document.getElementById('toConfBtn');
     const targetPath = document.getElementById('targetPathInput').value.trim();
 
     btn.disabled = true;
     spinner.style.display = 'block';
     btn.childNodes[btn.childNodes.length - 1].textContent = ' Extracting...';
-    toVerify.style.display = 'none';
+    toConf.style.display = 'none';
     document.getElementById('extractedFiles').style.display = 'none';
 
     vscode.postMessage({ command: 'extractFiles', payload: targetPath });
@@ -946,7 +993,7 @@ Respond in JSON only. No markdown. Schema:
           fileList.appendChild(item);
         });
         document.getElementById('extractedFiles').style.display = 'block';
-        document.getElementById('toVerifyBtn').style.display = 'inline-flex';
+        document.getElementById('toConfBtn').style.display = 'inline-flex';
         btn.style.display = 'none';
       } else {
         btn.textContent = 'Retry extraction';
@@ -1014,12 +1061,22 @@ Respond in JSON only. No markdown. Schema:
 
   document.getElementById('extractBtn').addEventListener('click', extractFiles);
   document.getElementById('btn-reset-path').addEventListener('click', resetPath);
-  document.getElementById('toVerifyBtn').addEventListener('click', () => goTo(3));
+  document.getElementById('toConfBtn').addEventListener('click', () => goTo(3));
   document.getElementById('btn-back-1').addEventListener('click', () => goTo(1));
+
+  document.getElementById('saveConfBtn').addEventListener('click', () => {
+    const url = document.getElementById('confUrlInput').value.trim();
+    const email = document.getElementById('confEmailInput').value.trim();
+    const token = document.getElementById('confTokenInput').value.trim();
+    if (url && email && token) { vscode.postMessage({ command: 'saveConfluenceConfig', payload: { url, email, token } }); }
+    goTo(4);
+  });
+  document.getElementById('skipConfBtn').addEventListener('click', () => goTo(4));
+  document.getElementById('btn-back-2').addEventListener('click', () => goTo(2));
 
   document.getElementById('verifyBtn').addEventListener('click', verifyFiles);
   document.getElementById('doneBtn').addEventListener('click', () => vscode.postMessage({command:'close'}));
-  document.getElementById('btn-back-2').addEventListener('click', () => goTo(2));
+  document.getElementById('btn-back-3').addEventListener('click', () => goTo(3));
 
   renderStepper();
 </script>

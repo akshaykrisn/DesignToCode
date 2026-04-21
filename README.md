@@ -6,12 +6,13 @@ A beautiful, guided onboarding experience that extracts bundled AI agent skill f
 
 1. **Introduction** — Explains what the extension does on first launch
 2. **Analysis** — Triggers a background GitHub Copilot LM request to scan your repo and recommend the best placement strategy (falls back to heuristics if Copilot is unavailable)
-3. **Extraction** — Copies bundled `skills/` and agent files from the extension package into the chosen workspace directory
-4. **Verification** — Confirms all files are present and correctly placed
+3. **Extraction** — Copies bundled `.github/` configuration (skills, agents, instructions) from the extension package into the chosen workspace directory
+4. **Feedback Loop (Optional)** — Link a Confluence Personal Access Token (PAT) to enable one-click syncing of your local skill modifications back to the team's wiki
+5. **Verification** — Confirms all files are present and correctly placed
 
 ## Bundled skills
 
-Add your own skill folders under `skills/` in this repository:
+Add your own payload folders under `.github/` in this repository:
 
 ```
 skills/
@@ -41,4 +42,9 @@ npm run compile
 Open the Command Palette (`Ctrl+Shift+P`) and run:
 ```
 Skills Onboard: Start Onboarding
+```
+
+To sync local modifications back to Confluence, run:
+```
+Skills Onboard: Contribute Skill Updates
 ```
