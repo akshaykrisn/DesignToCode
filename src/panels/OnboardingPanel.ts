@@ -785,7 +785,7 @@ Respond in JSON only. No markdown. Schema:
             </div>
             <div>
               <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">Atlassian API Token</div>
-              <input class="path-input" type="password" id="confTokenInput" style="width:100%" spellcheck="false" placeholder="Enter API token..."/>
+              <input class="path-input" type="password" id="confTokenInput" style="width:100%" spellcheck="false" placeholder="Enter API token"/>
             </div>
           </div>
         </div>
@@ -896,7 +896,7 @@ Respond in JSON only. No markdown. Schema:
 
     btn.disabled = true;
     spinner.style.display = 'block';
-    btn.childNodes[btn.childNodes.length - 1].textContent = ' Analysing...';
+    btn.childNodes[btn.childNodes.length - 1].textContent = ' Analysing';
     status.textContent = 'Connecting to Copilot...';
     terminal.innerHTML = '';
     resultCard.style.display = 'none';
@@ -931,7 +931,7 @@ Respond in JSON only. No markdown. Schema:
 
     btn.disabled = true;
     spinner.style.display = 'block';
-    btn.childNodes[btn.childNodes.length - 1].textContent = ' Extracting...';
+    btn.childNodes[btn.childNodes.length - 1].textContent = ' Extracting';
     toConf.style.display = 'none';
     document.getElementById('extractedFiles').style.display = 'none';
 
@@ -946,7 +946,7 @@ Respond in JSON only. No markdown. Schema:
 
     btn.disabled = true;
     spinner.style.display = 'block';
-    btn.childNodes[btn.childNodes.length - 1].textContent = ' Verifying...';
+    btn.childNodes[btn.childNodes.length - 1].textContent = ' Verifying';
     document.getElementById('verifyResult').style.display = 'none';
 
     vscode.postMessage({ command: 'verifyFiles', payload: targetPath });

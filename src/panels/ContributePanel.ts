@@ -106,20 +106,89 @@ export class ContributePanel {
       }
       const pageData = await getRes.json() as any;
 
-      // 2. Append diff block
       const currentBody = pageData.body.storage.value;
-      const mainTitle = customTitle ? customTitle : 'Skill Update';
-      const subTitle = `Skill update: ${new Date().toISOString()}`;
-      const newBlock = `<br/><h2>${mainTitle}</h2><p><em>${subTitle}</em></p><ac:structured-macro ac:name="code"><ac:parameter ac:name="language">diff</ac:parameter><ac:parameter ac:name="theme">Midnight</ac:parameter><ac:plain-text-body><![CDATA[${this._diffCache}]]></ac:plain-text-body></ac:structured-macro>`;
+      let finalBody = currentBody;
+      let isDuplicate = false;
+
+      // 2. Extract existing contributions to check for duplicates
+      const existingContributions: { index: number, title: string, diff: string }[] = [];
+      const blockRegex = /<h2>(.*?)<\/h2>.*?<!\[CDATA\[([\s\S]*?)\]\]>/gs;
+      let match;
+      let counter = 0;
+      while ((match = blockRegex.exec(currentBody)) !== null) {
+        existingContributions.push({ index: counter++, title: match[1], diff: match[2] });
+      }
+
+      if (existingContributions.length > 0) {
+        this._panel.webview.postMessage({ command: 'syncProgress', message: 'Analyzing duplicates...' });
+        try {
+          const models = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4o' });
+          if (models.length > 0) {
+            const model = models[0];
+            const prompt = `You are a semantic code analyzer.
+We have a list of existing code contributions (diffs) and a NEW contribution diff.
+Your task is to strongly determine if the NEW contribution is logically the SAME as any of the existing contributions.
+Ignore minor structural differences, whitespace, or naming if the underlying logic and outcome are fundamentally identical.
+We want to aggressively deduplicate.
+
+Existing contributions:
+${JSON.stringify(existingContributions)}
+
+New contribution:
+Title: ${customTitle || 'Skill Update'}
+Diff:
+${this._diffCache}
+
+Respond ONLY in valid JSON format. No markdown block.
+Schema: { "isDuplicate": boolean, "duplicateIndex": number, "reason": "string" }`;
+
+            const response = await model.sendRequest([vscode.LanguageModelChatMessage.User(prompt)], {}, new vscode.CancellationTokenSource().token);
+            let raw = '';
+            for await (const chunk of response.text) { raw += chunk; }
+            const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+
+            if (result.isDuplicate && typeof result.duplicateIndex === 'number' && result.duplicateIndex >= 0) {
+              isDuplicate = true;
+              let blockCount = 0;
+              
+              // Safely replace ONLY the title of the matched duplicate block
+              finalBody = currentBody.replace(/(<h2>(.*?)<\/h2>)(.*?<!\[CDATA\[[\s\S]*?\]\]>)/gs, (m: string, headerTag: string, titleText: string, restOfBlock: string) => {
+                if (blockCount === result.duplicateIndex) {
+                  blockCount++;
+                  const counterMatch = titleText.match(/(.*?)\s*\(Count: (\d+)\)$/);
+                  const newTitle = counterMatch 
+                    ? `${counterMatch[1]} (Count: ${parseInt(counterMatch[2], 10) + 1})` 
+                    : `${titleText} (Count: 2)`;
+                  return `<h2>${newTitle}</h2>${restOfBlock}`;
+                }
+                blockCount++;
+                return m;
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Duplicate analysis failed:', e);
+        }
+      }
+
+      // 3. Append or Update page
+      if (!isDuplicate) {
+        this._panel.webview.postMessage({ command: 'syncProgress', message: 'Appending new diff...' });
+        const mainTitle = customTitle ? customTitle : 'Skill Update';
+        const subTitle = `Skill update: ${new Date().toISOString()}`;
+        const newBlock = `<br/><h2>${mainTitle}</h2><p><em>${subTitle}</em></p><ac:structured-macro ac:name="code"><ac:parameter ac:name="language">diff</ac:parameter><ac:parameter ac:name="theme">Midnight</ac:parameter><ac:plain-text-body><![CDATA[${this._diffCache}]]></ac:plain-text-body></ac:structured-macro>`;
+        finalBody = currentBody + newBlock;
+      } else {
+        this._panel.webview.postMessage({ command: 'syncProgress', message: 'Updating counter...' });
+      }
 
       const updatePayload = {
         version: { number: pageData.version.number + 1 },
         title: pageData.title,
         type: 'page',
-        body: { storage: { value: currentBody + newBlock, representation: 'storage' } }
+        body: { storage: { value: finalBody, representation: 'storage' } }
       };
 
-      // 3. Update page
       const putRes = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(updatePayload) });
       if (!putRes.ok) {
         const errorText = await putRes.text();
@@ -278,6 +347,9 @@ export class ContributePanel {
 
   window.addEventListener('message', (event) => {
     const msg = event.data;
+    if (msg.command === 'syncProgress') {
+      syncBtnText.textContent = msg.message;
+    }
     if (msg.command === 'diffResult') {
       if (msg.error) {
         diffView.innerHTML = \`<div style="padding: 16px; color: var(--error);">\${msg.error}</div>\`;
